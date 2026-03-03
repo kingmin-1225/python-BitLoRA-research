@@ -3,98 +3,61 @@ os.environ["TORCH_COMPILE_DISABLE"] = "1"
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
-from utils import BitLinear
 
-def replace_lora_with_bitlora_eval(model):
-    """
-    추론용: lora_A, lora_B (nn.Linear)를 BitLinear로 교체합니다.
-    학습된 가중치를 그대로 유지하되, 기울기 계산(requires_grad)은 끕니다.
-    """
-    for name, module in model.named_modules():
-        if hasattr(module, "lora_A") and hasattr(module, "lora_B"):
-            old_A = module.lora_A["default"]
-            old_B = module.lora_B["default"]
-            
-            # BitLinear 초기화
-            new_A = BitLinear(old_A.in_features, old_A.out_features, bias=False)
-            new_B = BitLinear(old_B.in_features, old_B.out_features, bias=False)
-            
-            # 학습이 완료된 가중치를 BitLinear로 복사
-            new_A.weight.data = old_A.weight.data.clone()
-            new_B.weight.data = old_B.weight.data.clone()
-            
-            # 디바이스 및 데이터 타입 맞춤
-            new_A.to(old_A.weight.device).to(old_A.weight.dtype)
-            new_B.to(old_B.weight.device).to(old_B.weight.dtype)
+def main():
+    # 1. Base 모델 및 어댑터 경로 설정
+    base_model_id = "microsoft/bitnet-b1.58-2B-4T"
+    adapter_path = "./medical_bitlora_adapter_final" # 방금 학습이 끝나고 저장된 폴더
 
-            # 추론 시에는 기울기 업데이트가 필요 없으므로 False로 설정
-            new_A.weight.requires_grad = False
-            new_B.weight.requires_grad = False
-            
-            # 교체
-            module.lora_A["default"] = new_A
-            module.lora_B["default"] = new_B
-            
-    print(">>> 모든 LoRA 어댑터가 BitLinear(1.58bit)로 교체되었습니다 (추론 모드).")
-    return model
+    print(">>> 모델 로딩 중...")
+    # 2. Base 모델 로드
+    tokenizer = AutoTokenizer.from_pretrained(base_model_id)
+    base_model = AutoModelForCausalLM.from_pretrained(
+        base_model_id,
+        device_map="cuda",
+        torch_dtype=torch.bfloat16
+    )
 
-## ================ 1. MODEL & ADAPTER LOAD ================
+    # 3. Base 모델에 학습된 LoRA 어댑터 씌우기
+    print(">>> 어댑터 씌우는 중...")
+    model = PeftModel.from_pretrained(base_model, adapter_path)
 
-device = torch.accelerator.current_accelerator().type if hasattr(torch, "accelerator") else "cuda"
-base_model_id = "microsoft/bitnet-b1.58-2B-4T"
-adapter_path = "./final_bitlora_adapter"
+    # 추론 시에는 캐시 기능을 켜서 가속
+    model.config.use_cache = True 
+    model.eval() # 평가 모드로 전환
 
-print(">>> 베이스 모델 로딩 중...")
-base_model = AutoModelForCausalLM.from_pretrained(
-    base_model_id,
-    device_map=device,
-    torch_dtype=torch.bfloat16
-)
+    # 4. 프롬프트 템플릿 (학습할 때와 정확히 동일한 포맷이어야 합니다)
+    def generate_prompt(instruction, input_text=""):
+        if input_text:
+            return f"### Instruction:\n{instruction}\n\n### Input:\n{input_text}\n\n### Response:\n"
+        else:
+            return f"### Instruction:\n{instruction}\n\n### Response:\n"
 
-print(">>> 토크나이저 로딩 중...")
-tokenizer = AutoTokenizer.from_pretrained(adapter_path, trust_remote_code=True)
-if tokenizer.pad_token is None:
-    tokenizer.pad_token = tokenizer.eos_token
+    # 5. 질문하기 
+    question = input() ##  ex) What are the common symptoms of myocardial infarction?
+    prompt = generate_prompt(question)
 
-print(">>> PEFT 어댑터 병합 및 로딩 중...")
-# 1. 일반 LoRA 형태로 학습된 가중치를 불러옵니다.
-model = PeftModel.from_pretrained(base_model, adapter_path)
+    print(f"\n[질문]: {question}")
+    print("-" * 50)
+    print(">>> 모델이 답변을 생성하고 있습니다...\n")
 
-# 2. 로드된 가중치를 보존하면서 BitLinear로 교체합니다.
-model = replace_lora_with_bitlora_eval(model)
+    # 6. 토크나이징 및 생성
+    inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
 
-# 3. 모델을 평가(추론) 모드로 전환합니다.
-model.eval()
-
-
-## ================ 2. GENERATION TEST ================
-
-def generate_text(prompt, max_new_tokens=128):
-    # 학습에 사용된 OpenAssistant Guanaco 데이터셋의 기본 프롬프트 형태 (필요에 따라 수정하세요)
-    formatted_prompt = f"### Human: {prompt}\n### Assistant:"
-    
-    inputs = tokenizer(formatted_prompt, return_tensors="pt").to(device)
-    
     with torch.no_grad():
-        with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
-            outputs = model.generate(
-                **inputs,
-                max_new_tokens=max_new_tokens,
-                do_sample=True,         # 유연한 답변을 원하면 True, 단답형을 원하면 False
-                temperature=0.7,
-                top_p=0.9,
-                pad_token_id=tokenizer.pad_token_id,
-                eos_token_id=tokenizer.eos_token_id
-            )
-            
-    # 프롬프트 부분을 제외하고 생성된 텍스트만 추출
-    generated_text = tokenizer.decode(outputs[0][inputs['input_ids'].shape[1]:], skip_special_tokens=True)
-    return generated_text.strip()
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=150,    # 생성할 최대 토큰 수
+            temperature=0.3,       # 답변의 창의성 조절 (의학 정보는 낮게)
+            repetition_penalty=1.2 # 같은 말 반복 방지
+        )
 
-print("\n========== 추론 테스트 시작 ==========")
-user_query = "What are the key benefits of using 1.58-bit quantization in LLMs?"
-print(f"User: {user_query}")
-print("-" * 38)
-response = generate_text(user_query)
-print(f"Assistant: {response}")
-print("======================================")
+    # 7. 결과 출력 (입력 프롬프트 이후의 생성된 텍스트만 잘라서 출력)
+    input_length = inputs["input_ids"].shape[1]
+    response = tokenizer.decode(outputs[0][input_length:], skip_special_tokens=True)
+
+    print(f"[답변]: {response.strip()}")
+    print("-" * 50)
+
+if __name__ == '__main__':
+    main()
