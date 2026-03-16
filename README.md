@@ -50,4 +50,7 @@ Common Symptoms of Myocardial Infarction include:
 </div>
 </details>
 
+- 어댑터 학습 가능성 확인 -> bitnet.cpp 추론은 아직 안해봄
+- Bidirectional Attention, MNTP, SimCSE 적용
 
+- llm2vec install 
