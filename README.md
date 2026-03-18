@@ -1,14 +1,16 @@
 # python-BitLoRA-research
-본 저장소는 BitNet b1.58의 BitLinear 모듈을 **LoRA**에 접목하여, 파인튜닝 시 어댑터 A와 B를 ternary로 양자화했을 때의 성능을 확인
+본 저장소는 BitNet b1.58의 BitLinear 모듈을 **LoRA**에 접목하여, 파인튜닝 시 어댑터 A와 B를 ternary로 양자화했을 때의 성능을 구체화
+
 ## 연구 배경 및 목적
-- LoRA의 Adapter A와 B를 1.58-bit로 양자화하여 비트넷의 파인튜닝 확장성 개선
-- FP16 어댑터를 적용한 모델과 BitLinear 어댑터를 적용한 모델의 성능 비교
-- 결과를 바탕으로 LLM2Vec과 같은 임베딩 모델 최적화에 BitNet 구조를 적용할 수 있는지 확인
+- LoRA의 Adapter A와 B를 1.58-bit로 양자화한 BitLoRA와 기존 FP16 LoRA의 성능 비교
+- FP16 어댑터와 BitLoRA trade-off 분석
 
+## Tech Stack
+- **Language**: Python 3.11+
+- **Framework**: PyTorch, PEFT
+- **Hardware**: NVIDIA RTX 4060 Ti (8GB VRAM)
 
-
-## Results
-
+## Experiments
 ![Training Loss Comparison](loss_comparison_curve.png)
 
 ### Responses
@@ -49,8 +51,3 @@ Common Symptoms of Myocardial Infarction include:
 
 </div>
 </details>
-
-- 어댑터 학습 가능성 확인 -> bitnet.cpp 추론은 아직 안해봄
-- Bidirectional Attention, MNTP, SimCSE 적용
-
-- llm2vec install 

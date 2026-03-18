@@ -1,6 +1,3 @@
-import os
-os.environ["TORCH_COMPILE_DISABLE"] = "1"
-
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers import Trainer, TrainingArguments, DataCollatorForLanguageModeling
@@ -112,7 +109,6 @@ trainer = Trainer(
     data_collator=data_collator,
 )
 
-print(">>> 🚀 본격적인 학습을 시작합니다! (작업 관리자에서 VRAM을 모니터링하세요)")
 trainer.train()
 
 # 5. 학습 완료 후 최종 어댑터 저장
