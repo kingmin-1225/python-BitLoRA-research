@@ -1,67 +1,73 @@
 import json
 import matplotlib.pyplot as plt
-import os
 
-# 1. 두 모델의 trainer_state.json 경로 지정
-# (본인의 실제 체크포인트 번호에 맞게 수정하세요. 예: checkpoint-200)
-lora_state_path = "./medical_lora_results/checkpoint-200/trainer_state.json"
-bitlora_state_path = "./medical_bitlora_results/checkpoint-200/trainer_state.json"
-
-def extract_loss_data(file_path):
-    steps = []
-    losses = []
-    if not os.path.exists(file_path):
-        print(f"⚠️ 경고: 파일을 찾을 수 없습니다 -> {file_path}")
-        return steps, losses
-        
+file_path = "llama-3b-fp16_lora-r4/checkpoint-2718/trainer_state.json" 
+file_path2 = "llama-3b-bit_lora-r8/checkpoint-2718/trainer_state.json" 
+try:
     with open(file_path, "r", encoding="utf-8") as f:
-        state_data = json.load(f)
+        state = json.load(f)
         
-    for log in state_data.get("log_history", []):
-        if "loss" in log and "step" in log:
-            steps.append(log["step"])
+    log_history = state.get("log_history", [])
+
+    epochs = []
+    losses = []
+    eval_epochs = []
+    eval_losses = []
+    learning_rates = []
+
+    for log in log_history:
+        if "loss" in log and "epoch" in log:
+            epochs.append(log["epoch"])
             losses.append(log["loss"])
-            
-    return steps, losses
+            learning_rates.append(log["learning_rate"])
+        if "eval_loss" in log:
+            eval_epochs.append(log["epoch"])
+            eval_losses.append(log["eval_loss"])
 
-# 2. 데이터 추출
-lora_steps, lora_losses = extract_loss_data(lora_state_path)
-bitlora_steps, bitlora_losses = extract_loss_data(bitlora_state_path)
+    plt.figure(figsize=(20, 5))
+    plt.subplot(1, 2, 1)
+    plt.plot(epochs, losses, marker='o', markersize=4, linestyle='-', color='#467599', label='LoRA')
+    plt.subplot(1, 2, 2)
+    plt.plot(eval_epochs, eval_losses, marker='o', markersize=4, linestyle='-', color='#467599', label='LoRA')
 
-if not lora_steps and not bitlora_steps:
-    print("❌ 두 파일 모두 데이터를 불러오지 못했습니다. 경로를 확인해주세요!")
-else:
-    # 3. 그래프 그리기 세팅
-    plt.figure(figsize=(10, 6))
-    
-    # 일반 LoRA 그래프 (빨간색 선)
-    if lora_steps:
-        plt.plot(lora_steps, lora_losses, marker='o', linestyle='-', color='#d62728', 
-                 linewidth=2, markersize=5, label='Original LoRA Loss')
-                 
-    # BitLoRA 그래프 (파란색 선)
-    if bitlora_steps:
-        plt.plot(bitlora_steps, bitlora_losses, marker='s', linestyle='-', color='#1f77b4', 
-                 linewidth=2, markersize=5, label='BitLoRA (1.58-bit) Loss')
+    with open(file_path2, "r", encoding="utf-8") as f:
+        state = json.load(f)
+        
+    log_history = state.get("log_history", [])
 
-    # 4. 그래프 꾸미기
-    plt.title('Training Loss Comparison: LoRA vs BitLoRA', fontsize=16, fontweight='bold', pad=15)
-    plt.xlabel('Training Steps', fontsize=12)
-    plt.ylabel('Loss', fontsize=12)
-    
-    # 배경 그리드
+    epochs = []
+    losses = []
+    eval_epochs = []
+    eval_losses = []
+    learning_rates = []
+
+    for log in log_history:
+        if "loss" in log and "epoch" in log:
+            epochs.append(log["epoch"])
+            losses.append(log["loss"])
+            learning_rates.append(log["learning_rate"])
+        if "eval_loss" in log:
+            eval_epochs.append(log["epoch"])
+            eval_losses.append(log["eval_loss"])
+    plt.subplot(1, 2, 1)
+    plt.plot(epochs, losses, marker='o', markersize=4, linestyle='-', color='#9ed8db', label='BitLoRA')
+
+    plt.title('Training Loss over Epochs')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
     plt.grid(True, linestyle='--', alpha=0.6)
-    
-    # 범례 표시
-    plt.legend(fontsize=12)
-    
-    # 레이아웃 조절
-    plt.tight_layout()
+    plt.legend()
+    plt.subplot(1, 2, 2)
+    plt.plot(eval_epochs, eval_losses, marker='o', markersize=4, linestyle='-', color='#9ed8db', label='BitLoRA')
+    plt.title('Validation Loss over Epochs')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.legend()
 
-    # 5. 이미지 파일로 저장
-    save_img_path = "loss_comparison_curve.png"
-    plt.savefig(save_img_path, dpi=300)
-    print(f"✅ 비교 그래프가 '{save_img_path}' 파일로 고화질 저장되었습니다!")
+    plt.savefig('loss_graph.png', dpi=300)
     
-    # 6. 화면에 출력
     plt.show()
+
+except FileNotFoundError:
+    print(f"No file in {file_path}")

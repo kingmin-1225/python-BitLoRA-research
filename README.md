@@ -5,49 +5,43 @@
 - LoRA의 Adapter A와 B를 1.58-bit로 양자화한 BitLoRA와 기존 FP16 LoRA의 성능 비교
 - FP16 어댑터와 BitLoRA trade-off 분석
 
-## Tech Stack
-- **Language**: Python 3.11+
-- **Framework**: PyTorch, PEFT
-- **Hardware**: NVIDIA RTX 4060 Ti (8GB VRAM)
+## Experiment
 
-## Experiments
-![Training Loss Comparison](loss_comparison_curve.png)
+```
+python ./src/train.py --adaptor_type fp16 --r 8 --epochs 3 
+```
 
-### Responses
+## Performance Comparison
 
-<details>
-<summary>LoRA(FP16)</summary>
-<div markdown="1">
+### Common Experimental Settings
 
-[답변]: Myocardial infarction, commonly known as a heart attack, is characterized by several distinct symptoms. The most prominent symptom is chest pain or discomfort that may radiate to other parts of the body such as arms, back, neck, jaw, and stomach. Other signs include shortness of breath, sweating, nausea, vomiting, dizziness, fatigue, weakness, and lightheadedness.
+**1. Environment & Data**
 
+- **Language:** `python` 3.11+
+- **Base Model:** `meta-llama/Llama-3.2-3B-Instruct`
+- **Dataset:** `microsoft/orca-math-word-problems-200k` (Shuffle seed: 42)
+  - Train Set: 14,500 samples
+  - Validation Set: 500 samples
+- **Hardware:** NVIDIA RTX 4060 Ti (8GB VRAM) (System RAM: 32GB)
+- **Framework:** `peft` 0.18.1, `PyTorch` 2.10.0+cu128, `transformers` 4.52.0.dev0
 
+**2. Training Hyperparameters**
+- **Epochs:** 3
+- **Max Sequence Length:** 512 tokens
+- **Global Batch Size:** 16
+- **Optimizer:** `paged_adamw_8bit`
+- **Learning Rate:** 2e-4 (Cosine LR Scheduler)
+- **LoRA Target Modules:** All linear layers (`q_proj`, `k_proj`, `v_proj`, `o_proj`, `gate_proj`, `up_proj`, `down_proj`)
+- **LoRA Alpha:** `r * 2` (Dropout: 0.05)
 
-In addition to these general symptoms, some individuals with myocardial infarction also experience specific warning signs like sudden numbness or tingling in one arm or leg, which can be an indication of blocked blood flow due to clot formation. It's important for anyone experiencing any of these symptoms to seek immediate medical attention as soon as possible. Prompt treatment
+### Results
 
-</div>
-</details>
+![Training Loss Comparison](loss_graph.png)
 
-<details>
-<summary>BitLoRA (1.58-bit)</summary>
-<div markdown="1">
-
-[답변]: Myocardial Infarction (heart attack) is a medical condition that occurs when blood flow to part of your heart muscle is blocked, usually by a buildup of fat in coronary arteries. The blockage can cause damage or death of heart tissue.
-
-
-
-Common Symptoms of Myocardial Infarction include:
-
-
-
-1. **Chest Pain**: This pain may radiate to other parts of the body such as arms, jaw, back, neck, and down into one's left arm.
-
-2. **Shortness of Breath**: Difficulty breathing due to reduced oxygen supply from damaged heart muscles.
-
-3. **Nausea and Vomiting**: Feeling sick or vomiting before chest discomfort starts.
-
-4. **Lightheadedness or Dizziness**: Feeling
-
-
-</div>
-</details>
+| Method | Trainable Params (%) | VRAM Usage (GB) | Run Time | Relative Performance | Remarks |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **FP16 Adaptor (r=4)** | 0.188 | 11.4 | -- | -- | -- |
+| **FP16 Adaptor (r=8)** | 0.377 | 11.4 | -- | -- | -- |
+| **Bit Adaptor (r=4)** | 0.188 | 11.4 | -- | -- | -- |
+| **Bit Adaptor (r=8)** | 0.377 | -- | -- | -- | -- |
+| **Bit Adaptor (r=16)** | 0.7511 | -- | -- | -- | -- |
