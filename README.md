@@ -38,11 +38,11 @@ python ./src/train.py --adaptor_type fp16 --r 8 --epochs 3
 
 ![Training Loss Comparison](loss_graph.png)
 
-| Method | Trainable Params (%) | GSM8K (CoT) | inference time (Adaptor only) | inference cost (Adaptor only)
-| :--- | :---: | :---: | :---: |
-| **BASE MODEL** | -- | 77.7 | -- |
-| **FP16 Adaptor (r=4)** | 0.188 | -- | -- |
-| **FP16 Adaptor (r=8)** | 0.377 | -- | -- |
-| **Bit Adaptor (r=4)** | 0.188 | -- | -- |
-| **Bit Adaptor (r=8)** | 0.377 | -- | -- |
-| **Bit Adaptor (r=16)** | 0.7511 | -- | -- |
+| Method | Trainable Params (%) | Validation loss | GSM8K (CoT) | adaptor size | inference time/cost | 
+| :--- | :---: | :---: | :---: | :---: | :---: | 
+| **BASE MODEL** | -- | -- | 77.7 | -- | -- | 
+| **FP16 Adaptor (r=4)** | 0.188 | -- | -- | -- | -- |
+| **FP16 Adaptor (r=8)** | 0.377 | -- | -- | -- | -- |
+| **Bit Adaptor (r=4)** | 0.188 | -- | -- | -- | -- |
+| **Bit Adaptor (r=8)** | 0.377 | -- | -- | -- | -- |
+| **Bit Adaptor (r=16)** | 0.7511 | -- | -- | -- | -- |
