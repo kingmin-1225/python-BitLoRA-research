@@ -1,5 +1,5 @@
 # python-BitLoRA-research
-본 저장소는 BitNet b1.58의 BitLinear 모듈을 **LoRA**에 접목하여, 파인튜닝 시 어댑터 A와 B를 ternary로 양자화했을 때의 성능을 구체화
+본 저장소는 BitNet b1.58의 **BitLinear** 모듈을 **LoRA**에 접목하여, 파인튜닝 시 어댑터 A와 B를 ternary로 양자화했을 때의 성능을 구체화
 
 ## 연구 배경 및 목적
 - LoRA의 Adapter A와 B를 1.58-bit로 양자화한 BitLoRA와 기존 FP16 LoRA의 성능 비교
@@ -38,10 +38,11 @@ python ./src/train.py --adaptor_type fp16 --r 8 --epochs 3
 
 ![Training Loss Comparison](loss_graph.png)
 
-| Method | Trainable Params (%) | VRAM Usage (GB) | Run Time | Relative Performance | Remarks |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **FP16 Adaptor (r=4)** | 0.188 | 11.4 | -- | -- | -- |
-| **FP16 Adaptor (r=8)** | 0.377 | 11.4 | -- | -- | -- |
-| **Bit Adaptor (r=4)** | 0.188 | 11.4 | -- | -- | -- |
-| **Bit Adaptor (r=8)** | 0.377 | -- | -- | -- | -- |
-| **Bit Adaptor (r=16)** | 0.7511 | -- | -- | -- | -- |
+| Method | Trainable Params (%) | GSM8K (CoT) | inference time (Adaptor only) | inference cost (Adaptor only)
+| :--- | :---: | :---: | :---: |
+| **BASE MODEL** | -- | 77.7 | -- |
+| **FP16 Adaptor (r=4)** | 0.188 | -- | -- |
+| **FP16 Adaptor (r=8)** | 0.377 | -- | -- |
+| **Bit Adaptor (r=4)** | 0.188 | -- | -- |
+| **Bit Adaptor (r=8)** | 0.377 | -- | -- |
+| **Bit Adaptor (r=16)** | 0.7511 | -- | -- |

@@ -110,10 +110,9 @@ def main():
 
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
 
-    save_path = f"./llama-3b-{args.adaptor_type}_lora-r{args.r}"
+    save_path = f"./experiments/llama-3b-{args.adaptor_type}_lora-r{args.r}"
 
     training_args = TrainingArguments(
-        max_steps=2,
         output_dir=save_path,
         num_train_epochs=args.epochs,
         per_device_train_batch_size=1,
