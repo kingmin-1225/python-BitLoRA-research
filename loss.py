@@ -7,8 +7,8 @@ bit_paths = [
 ]
 
 fp16_paths = [
-    "experiments/llama-3b-fp16_lora-r4/checkpoint-2718/trainer_state.json",
-    "experiments/llama-3b-fp16_lora-r8/checkpoint-2718/trainer_state.json",
+    "experiments/llama-3b-fp32_lora-r4/checkpoint-2718/trainer_state.json",
+    "experiments/llama-3b-fp32_lora-r8/checkpoint-2718/trainer_state.json",
 ]
 
 try:

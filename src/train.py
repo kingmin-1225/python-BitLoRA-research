@@ -15,12 +15,12 @@ from datasets import load_dataset
 
 def main():
     parser = argparse.ArgumentParser(description="LoRA Training Script")
-    parser.add_argument('--adaptor_type', type=str, default='fp16', choices=['fp16', 'bit'])
+    parser.add_argument('--adapter_type', type=str, default='fp32', choices=['fp32', 'bit'])
     parser.add_argument('--r', type=int, default=8)
     parser.add_argument('--epochs', type=int, default=1)
     args = parser.parse_args()
 
-    if args.adaptor_type == "bit":
+    if args.adapter_type == "bit":
         import importlib
         from replace_bitlora import BitLoraLayer
 
@@ -110,13 +110,13 @@ def main():
 
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
 
-    save_path = f"./experiments/llama-3b-{args.adaptor_type}_lora-r{args.r}"
+    save_path = f"./experiments/llama-3b-{args.adapter_type}_lora-r{args.r}"
 
     training_args = TrainingArguments(
         output_dir=save_path,
         num_train_epochs=args.epochs,
-        per_device_train_batch_size=1,
-        gradient_accumulation_steps=16,
+        per_device_train_batch_size=2,
+        gradient_accumulation_steps=8,
         optim="paged_adamw_8bit",
         gradient_checkpointing=True,
         do_train=True,
