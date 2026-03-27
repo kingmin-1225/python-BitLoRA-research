@@ -4,11 +4,13 @@ import matplotlib.pyplot as plt
 bit_paths = [
     "experiments/llama-3b-bit_lora-r4/checkpoint-2718/trainer_state.json",
     "experiments/llama-3b-bit_lora-r8/checkpoint-2718/trainer_state.json",
+    "experiments/llama-3b-bit_lora-r16/checkpoint-2721/trainer_state.json",
 ]
 
 fp16_paths = [
     "experiments/llama-3b-fp32_lora-r4/checkpoint-2718/trainer_state.json",
     "experiments/llama-3b-fp32_lora-r8/checkpoint-2718/trainer_state.json",
+    "experiments/llama-3b-fp32_lora-r16/checkpoint-2721/trainer_state.json",
 ]
 
 try:

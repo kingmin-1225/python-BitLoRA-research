@@ -113,10 +113,11 @@ def main():
     save_path = f"./experiments/llama-3b-{args.adapter_type}_lora-r{args.r}"
 
     training_args = TrainingArguments(
+        # max_steps=2,
         output_dir=save_path,
         num_train_epochs=args.epochs,
-        per_device_train_batch_size=2,
-        gradient_accumulation_steps=8,
+        per_device_train_batch_size=1,
+        gradient_accumulation_steps=16,
         optim="paged_adamw_8bit",
         gradient_checkpointing=True,
         do_train=True,
