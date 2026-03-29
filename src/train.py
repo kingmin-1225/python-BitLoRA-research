@@ -1,4 +1,5 @@
 import os
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] ="expandable_segments:True"
 from huggingface_hub import login
 from dotenv import load_dotenv
 
@@ -15,18 +16,26 @@ from datasets import load_dataset
 
 def main():
     parser = argparse.ArgumentParser(description="LoRA Training Script")
-    parser.add_argument('--adapter_type', type=str, default='fp32', choices=['fp32', 'bit'])
+    parser.add_argument('--adapter_type', type=str, default='fp32', choices=['fp32', 'ternary', 'binary'])
     parser.add_argument('--r', type=int, default=8)
     parser.add_argument('--epochs', type=int, default=1)
     args = parser.parse_args()
 
-    if args.adapter_type == "bit":
+    if args.adapter_type == "ternary":
         import importlib
-        from replace_bitlora import BitLoraLayer
+        from replace_bitlora import BitLoraLayer158
 
         original = importlib.import_module("peft")
         original.tuners.lora.layer.LoraLayer.update_layer = (
-            BitLoraLayer.update_layer
+            BitLoraLayer158.update_layer
+        )
+    elif args.adapter_type == "binary":
+        import importlib
+        from replace_bitlora import BitLoraLayer1
+
+        original = importlib.import_module("peft")
+        original.tuners.lora.layer.LoraLayer.update_layer = (
+            BitLoraLayer1.update_layer
         )
     
     device = torch.accelerator.current_accelerator().type if hasattr(torch, "accelerator") else "cuda"
@@ -51,8 +60,6 @@ def main():
 
     base_model = get_peft_model(base_model, peft_config)
     base_model.print_trainable_parameters()
-
-    data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
 
     base_model.gradient_checkpointing_enable()
     base_model.enable_input_require_grads()
@@ -110,10 +117,10 @@ def main():
 
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
 
-    save_path = f"./experiments/llama-3b-{args.adapter_type}_lora-r{args.r}"
+    save_path = f"./experiments/llama-3b-{args.adapter_type}-r{args.r}-test"
 
     training_args = TrainingArguments(
-        # max_steps=2,
+        max_steps=2,
         output_dir=save_path,
         num_train_epochs=args.epochs,
         per_device_train_batch_size=1,
