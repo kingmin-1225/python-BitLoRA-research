@@ -23,7 +23,7 @@ def main():
 
     if args.adapter_type == "ternary":
         import importlib
-        from replace_bitlora import BitLoraLayer158
+        from src.replace_bitlora import BitLoraLayer158
 
         original = importlib.import_module("peft")
         original.tuners.lora.layer.LoraLayer.update_layer = (
@@ -31,7 +31,7 @@ def main():
         )
     elif args.adapter_type == "binary":
         import importlib
-        from replace_bitlora import BitLoraLayer1
+        from src.replace_bitlora import BitLoraLayer1
 
         original = importlib.import_module("peft")
         original.tuners.lora.layer.LoraLayer.update_layer = (

@@ -1,7 +1,7 @@
 from peft.tuners.lora.layer import LoraLayer
 import torch
 from torch import nn
-from utils import BitLinear158, BitLinear1
+from src.utils import BitLinear158, BitLinear1
 
 from peft.utils.warning import PeftWarning
 from peft import ArrowConfig
