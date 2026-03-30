@@ -37,23 +37,25 @@ python ./train.py --adapter_type fp32 --r 8 --epochs 3
 
 ![Loss Comparison](loss_graph.png)
 
-| Method | Trainable Params (%) | Validation loss (epoch=1.98) | PPL |GSM8K (CoT) | Adapter size(MB) | Inference energy consumption (pJ) |
+| Method | Trainable Params (%) | Validation loss (epoch=1.98) | PPL |GSM8K (CoT) | Adapter size (MB) | Inference energy consumption (pJ) |
 | :--- | :---: | :---: | :---: | :---: | :---: |  :---: | 
 | **BASE MODEL**            | --    | --    | -- | 77.7  | -- | -- |
-| **FP32 Adapter (r=4)**    | 0.188 | 0.460 | -- | --    | -- | -- |
-| **FP32 Adapter (r=8)**    | 0.377 | 0.451 | -- | --    | -- | -- |
-| **FP32 Adapter (r=16)**   | 0.751 | 0.442 | -- | --    | -- | -- |
-| **Ternary Adapter (r=4)** | 0.188 | 0.472 | -- | --    | -- | -- |
-| **Ternary Adapter (r=8)** | 0.377 | 0.463 | -- | --    | -- | -- |
-| **Ternary Adapter (r=16)**| 0.751 | 0.452 | -- | --    | -- | -- |
-| **Binary Adapter (r=4)**  | 0.188 | 0.471 | -- | --    | -- | -- |
-| **Binary Adapter (r=8)**  | 0.377 | 0.462 | -- | --    | -- | -- |
-| **Binary Adapter (r=16)** | 0.751 | --    | -- | --    | -- | -- |
+| **FP32 Adapter (r=4)**    | 0.188 | 0.460 | -- | --    | 23.2 | -- |
+| **FP32 Adapter (r=8)**    | 0.377 | 0.451 | -- | --    | 46.4 | -- |
+| **FP32 Adapter (r=16)**   | 0.751 | 0.442 | -- | --    | 92.7 | -- |
+| **Ternary Adapter (r=4)** | 0.188 | 0.472 | -- | --    | 1.45 | -- |
+| **Ternary Adapter (r=8)** | 0.377 | 0.463 | -- | --    | 2.89 | -- |
+| **Ternary Adapter (r=16)**| 0.751 | 0.452 | -- | --    | 5.79 | -- |
+| **Binary Adapter (r=4)**  | 0.188 | 0.471 | -- | --    | 0.73 | -- |
+| **Binary Adapter (r=8)**  | 0.377 | 0.462 | -- | --    | 1.45 | -- |
+| **Binary Adapter (r=16)** | 0.751 | --    | -- | --    | 2.89 | -- |
 
+- fp32: `adapter_model.safetensors`
+- ternary(2bit packing): `ternary_model.bin`
+- binary: `binary_model.bin`
 
 ### Issues
 - ~~`activation` 양자화를 제외하고도 학습시켜봤으나 성능차이가 없거나 미비함 (정수 연산을 위해 W1A8 선정)~~
 - `unsloth`를 이용해서 학습을 가속하려고 했으나, `BitLinear`가 적용되지 않는 문제가 발생
 - `activation quant` 제거
-- `binary` adapter 추가 실험
-- 
+- `binary` adapter 추가

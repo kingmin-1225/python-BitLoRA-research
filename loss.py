@@ -2,9 +2,9 @@ import json
 import matplotlib.pyplot as plt
 
 ternary_paths = [
-    "experiments/llama-3b-ternary-r4/checkpoint-2721/trainer_state.json",
-    "experiments/llama-3b-ternary-r8/checkpoint-2721/trainer_state.json",
-    "experiments/llama-3b-ternary-r16-W2A8/checkpoint-2721/trainer_state.json",
+    "experiments/llama-3b-ternary-r4/checkpoint-2718/trainer_state.json",
+    "experiments/llama-3b-ternary-r8/checkpoint-2718/trainer_state.json",
+    "experiments/llama-3b-ternary-r16/checkpoint-2721/trainer_state.json",
 ]
 
 binary_paths = [
