@@ -10,6 +10,7 @@ ternary_paths = [
 binary_paths = [
     "experiments/llama-3b-binary-r4/checkpoint-2721/trainer_state.json",
     "experiments/llama-3b-binary-r8/checkpoint-2721/trainer_state.json",
+    "experiments/llama-3b-binary-r16/checkpoint-2721/trainer_state.json",
 ]
 
 fp16_paths = [

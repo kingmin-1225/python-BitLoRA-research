@@ -48,7 +48,7 @@ python ./train.py --adapter_type fp32 --r 8 --epochs 3
 | **Ternary Adapter (r=16)**| 0.751 | 0.452 | -- | --    | 5.79 | -- |
 | **Binary Adapter (r=4)**  | 0.188 | 0.471 | -- | --    | 0.73 | -- |
 | **Binary Adapter (r=8)**  | 0.377 | 0.462 | -- | --    | 1.45 | -- |
-| **Binary Adapter (r=16)** | 0.751 | --    | -- | --    | 2.89 | -- |
+| **Binary Adapter (r=16)** | 0.751 | 0.453 | -- | --    | 2.89 | -- |
 
 - fp32: `adapter_model.safetensors`
 - ternary(2bit packing): `ternary_model.bin`
