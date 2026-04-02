@@ -1,17 +1,17 @@
 import os
+import argparse
+import torch
 from huggingface_hub import login
 from dotenv import load_dotenv
+from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments
+from peft import LoraConfig, get_peft_model, TaskType
+from datasets import load_dataset
+from trl import SFTTrainer, DataCollatorForCompletionOnlyLM
 
 load_dotenv()
 hf_token = os.getenv("HF_TOKEN")
-login(hf_token)
-
-import argparse
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from transformers import Trainer, TrainingArguments, DataCollatorForLanguageModeling
-from peft import LoraConfig, get_peft_model, TaskType
-from datasets import load_dataset
+if hf_token:
+    login(hf_token)
 
 def main():
     parser = argparse.ArgumentParser(description="LoRA Training Script")
@@ -20,6 +20,7 @@ def main():
     parser.add_argument('--epochs', type=int, default=3)
     args = parser.parse_args()
 
+    # Custom LoRA Layer 패치 로직
     if args.adapter_type == "ternary":
         import importlib
         from src.replace_bitlora import BitLoraLayer158
@@ -30,12 +31,13 @@ def main():
         from src.replace_bitlora import BitLoraLayer1
         original = importlib.import_module("peft")
         original.tuners.lora.layer.LoraLayer.update_layer = BitLoraLayer1.update_layer
-    
-    device = torch.accelerator.current_accelerator().type if hasattr(torch, "accelerator") else "cuda"
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     model_id = "meta-llama/Llama-3.2-3B-Instruct"
 
     tokenizer = AutoTokenizer.from_pretrained(model_id)
-    tokenizer.pad_token = tokenizer.eos_token
+    if tokenizer.pad_token is None: 
+        tokenizer.pad_token = "<|finetune_right_pad_id|>"
     tokenizer.padding_side = "right"
 
     base_model = AutoModelForCausalLM.from_pretrained(
@@ -44,56 +46,45 @@ def main():
         torch_dtype=torch.bfloat16,
         attn_implementation="sdpa",
     )
+    base_model.config.pad_token_id = tokenizer.pad_token_id
 
     peft_config = LoraConfig(
         task_type=TaskType.CAUSAL_LM,
         inference_mode=False,
         r=args.r,
-        lora_alpha=args.r*2,
+        lora_alpha=args.r * 2,
         lora_dropout=0.05,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
     )
 
-    base_model = get_peft_model(base_model, peft_config)
-    base_model.print_trainable_parameters()
     base_model.gradient_checkpointing_enable()
     base_model.enable_input_require_grads()
+    base_model = get_peft_model(base_model, peft_config)
+    base_model.print_trainable_parameters()
 
     dataset = load_dataset("openai/gsm8k", "main")
 
-    def process_data(samples):
-        batch_prompts = []
-        for q, a in zip(samples["question"], samples["answer"]):
-            # Llama-3 Instruct 포맷 적용
+    def formatting_prompts_func(example):
+        output_texts = []
+        for i in range(len(example['question'])):
             messages = [
-                {"role": "user", "content": q},
-                {"role": "assistant", "content": a}
+                {"role": "user", "content": example['question'][i]},
+                {"role": "assistant", "content": example['answer'][i]}
             ]
-            prompt = tokenizer.apply_chat_template(
-                messages, 
-                tokenize=False, 
+            text = tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
                 add_generation_prompt=False
             )
-            batch_prompts.append(prompt)
-        
-        result = tokenizer(
-            batch_prompts,
-            truncation=True,
-            max_length=512,
-            padding="max_length"
-        )
+            output_texts.append(text)
+        return output_texts
 
-        labels = []
-        for input_id in result["input_ids"]:
-            label = [token if token != tokenizer.pad_token_id else -100 for token in input_id]
-            labels.append(label)
-        result["labels"] = labels
-        
-        return result
-
-
-    tokenized_train = dataset["train"].map(process_data, batched=True, remove_columns=dataset["train"].column_names)
-    tokenized_test = dataset["test"].map(process_data, batched=True, remove_columns=dataset["test"].column_names)
+    response_template = "<|start_header_id|>assistant<|end_header_id|>\n\n"
+    collator = DataCollatorForCompletionOnlyLM(
+        response_template=response_template,
+        tokenizer=tokenizer,
+        mlm=False
+    )
 
     save_path = f"./experiments/llama-3b-{args.adapter_type}-r{args.r}-test"
 
@@ -104,11 +95,9 @@ def main():
         gradient_accumulation_steps=16,
         optim="paged_adamw_8bit",
         gradient_checkpointing=True,
-
-        # validation
+        gradient_checkpointing_kwargs={'use_reentrant': False},
         do_eval=True,
         eval_strategy="epoch",
-
         logging_steps=10,
         learning_rate=2e-4,
         lr_scheduler_type="cosine",
@@ -117,14 +106,14 @@ def main():
         seed=42,
     )
 
-    trainer = Trainer(
+    trainer = SFTTrainer(
         model=base_model,
         args=training_args,
-
-        train_dataset=tokenized_train,
-        eval_dataset=tokenized_test,
-
-        data_collator=DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False),
+        train_dataset=dataset["train"],
+        eval_dataset=dataset["test"],
+        formatting_func=formatting_prompts_func,
+        data_collator=collator,
+        max_seq_length=1024,
     )
 
     train_result = trainer.train()
@@ -133,15 +122,12 @@ def main():
     print(f"Max VRAM usage: {peak_vram:.2f} GB")
 
     metrics = train_result.metrics
-
     trainer.log_metrics("train", metrics)
     trainer.save_metrics("train", metrics)
     trainer.save_state()
 
-    trainer.model.save_pretrained(
-        save_path,
-        safe_serialization=False
-        )
+    trainer.save_model(save_path)
+    tokenizer.save_pretrained(save_path)
     print("Model saved to", save_path)
 
 if __name__ == "__main__":
