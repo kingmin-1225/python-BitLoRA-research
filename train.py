@@ -18,7 +18,7 @@ def main():
     parser = argparse.ArgumentParser(description="LoRA Training Script")
     parser.add_argument('--adapter_type', type=str, default='fp32', choices=['fp32', 'ternary', 'binary'])
     parser.add_argument('--r', type=int, default=8)
-    parser.add_argument('--epochs', type=int, default=1)
+    parser.add_argument('--epochs', type=int, default=3)
     args = parser.parse_args()
 
     if args.adapter_type == "ternary":
@@ -120,7 +120,7 @@ def main():
     save_path = f"./experiments/llama-3b-{args.adapter_type}-r{args.r}-test"
 
     training_args = TrainingArguments(
-        max_steps=2,
+        # max_steps=2,
         output_dir=save_path,
         num_train_epochs=args.epochs,
         per_device_train_batch_size=1,

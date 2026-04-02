@@ -3,3 +3,4 @@ __pycache__
 experiments*
 .env
 weights/
+to_eval/
