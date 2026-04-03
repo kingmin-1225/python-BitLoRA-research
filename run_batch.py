@@ -2,6 +2,8 @@ import os
 import sys
 import subprocess
 import time
+os.environ["NCCL_IB_DISABLE"] = "1"
+os.environ["NCCL_P2P_DISABLE"] = "1"
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 adapters = ["fp32", "ternary", "binary"]
