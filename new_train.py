@@ -1,12 +1,10 @@
 import os
 import argparse
 import torch
-import re  # 정답 추출용
-from tqdm import tqdm  # 진행바
 from huggingface_hub import login
 from dotenv import load_dotenv
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-from peft import LoraConfig, get_peft_model, TaskType, prepare_model_for_kbit_training
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from peft import LoraConfig, get_peft_model, TaskType
 from datasets import load_dataset
 from trl import SFTConfig, SFTTrainer, DataCollatorForCompletionOnlyLM
 
@@ -14,15 +12,6 @@ load_dotenv()
 hf_token = os.getenv("HF_TOKEN")
 if hf_token:
     login(hf_token)
-
-def extract_answer(text):
-    match = re.search(r"####\s*(-?\d+)", text)
-    if match:
-        return match.group(1)
-    numbers = re.findall(r"-?\d+", text)
-    if numbers:
-        return numbers[-1]
-    return None
 
 def main():
     parser = argparse.ArgumentParser(description="LoRA Training Script")
@@ -50,7 +39,7 @@ def main():
 
     base_model = AutoModelForCausalLM.from_pretrained(
         model_id,
-        device_map={"": 0}, 
+        device_map="cuda", 
         torch_dtype=torch.bfloat16,
         attn_implementation="sdpa",
     )
@@ -66,6 +55,7 @@ def main():
     )
 
     base_model = get_peft_model(base_model, peft_config)
+    base_model.enable_input_require_grads()
     base_model.print_trainable_parameters()
 
     dataset = load_dataset("openai/gsm8k", "main")
@@ -90,7 +80,7 @@ def main():
         mlm=False
     )
 
-    save_path = f"./new_experiments/llama-3b-{args.adapter_type}-r{args.r}-test"
+    save_path = f"./new_experiments/llama-3b-{args.adapter_type}-r{args.r}"
 
     training_args = SFTConfig(
         output_dir=save_path,
@@ -131,50 +121,7 @@ def main():
         data_collator=collator,
     )
 
-    # --- 학습 시작 ---
-    print("Starting training...")
     train_result = trainer.train()
-
-    # --- 평가 로직 (Accuracy 확인) ---
-    print("\n--- Starting Evaluation ---")
-    base_model.eval()
-    torch.cuda.empty_cache() # VRAM 비우기
-
-    test_ds = dataset["test"]
-    num_eval_samples = 1319
-    correct = 0
-    total = 0
-
-    for i in tqdm(range(num_eval_samples), desc="Evaluating"):
-        question = test_ds[i]['question']
-        ground_truth = extract_answer(test_ds[i]['answer'])
-
-        eval_prompt = tokenizer.apply_chat_template(
-            [{"role": "user", "content": question}],
-            tokenize=False,
-            add_generation_prompt=True
-        )
-        inputs = tokenizer(eval_prompt, return_tensors="pt").to("cuda")
-
-        with torch.no_grad():
-            outputs = base_model.generate(
-                **inputs, 
-                max_new_tokens=256, 
-                pad_token_id=tokenizer.eos_token_id,
-                temperature=0.1,
-                do_sample=False
-            )
-        
-        decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
-        generated_answer = decoded.split("assistant")[-1] if "assistant" in decoded else decoded
-        predicted_number = extract_answer(generated_answer)
-
-        if predicted_number == ground_truth:
-            correct += 1
-        total += 1
-
-    accuracy = (correct / total) * 100
-    print(f"\nFinal Test Accuracy ({total} samples): {accuracy:.2f}%")
 
     peak_vram = torch.cuda.max_memory_allocated() / 1024**3
     print(f"Max VRAM usage: {peak_vram:.2f} GB")
