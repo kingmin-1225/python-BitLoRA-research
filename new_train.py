@@ -1,5 +1,6 @@
 import os
 import argparse
+import re
 import torch
 from huggingface_hub import login
 from dotenv import load_dotenv
@@ -58,7 +59,26 @@ def main():
     base_model.enable_input_require_grads()
     base_model.print_trainable_parameters()
 
-    dataset = load_dataset("openai/gsm8k", "main")
+    def format_answer_to_gsm8k(example):
+        answer = example['answer']
+        numbers = re.findall(r'-?\d+(?:,\d+)*(?:\.\d+)?', answer)
+        
+        if numbers:
+            final_answer = numbers[-1]
+            example['answer'] = f"{answer}\n#### {final_answer}"
+        else:
+            example['answer'] = f"{answer}\n#### "
+            
+        return example
+
+    orca_dataset = load_dataset("microsoft/orca-math-word-problems-200k", split="train")
+    filtered_orca = orca_dataset.filter(lambda x: len(x['question']) + len(x['answer']) < 2000)
+    formatted_orca = filtered_orca.map(format_answer_to_gsm8k)
+
+    sampled_orca = formatted_orca.shuffle(seed=42).select(range(15000))
+    split_dataset = sampled_orca.train_test_split(test_size=500, seed=42)
+
+    
 
     def formatting_prompts_func(example):
         output_texts = []
@@ -115,8 +135,8 @@ def main():
     trainer = SFTTrainer(
         model=base_model,
         args=training_args,
-        train_dataset=dataset["train"],
-        eval_dataset=dataset["test"],
+        train_dataset = split_dataset['train'],
+        eval_dataset = split_dataset['test'],
         formatting_func=formatting_prompts_func,
         data_collator=collator,
     )
