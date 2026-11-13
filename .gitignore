@@ -5,3 +5,5 @@ __pycache__
 weights/
 to_eval/
 log/
+eval_results/*
+!eval_results/summary.jsonl
